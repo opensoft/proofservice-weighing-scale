@@ -4,9 +4,11 @@
 
 #include "proofcore/proofobject.h"
 
-#include "3rdparty/hidapi/hidapi.h"
-
 #include <math.h>
+
+constexpr int READ_TIMEOUT = 500;
+constexpr int READ_ERROR_TIMEOUT = 5000;
+constexpr int ERROR_COOLDOWN_TIMEOUT = 100;
 
 static const QHash<WeighingScaleHandler::Unit, QString> UNITS = {
     {WeighingScaleHandler::Unit::UnknownUnit, ""},
@@ -44,8 +46,8 @@ uint qHash(WeighingScaleHandler::Status value, uint seed)
     return qHash(static_cast<int>(value), seed);
 }
 
-WeighingScaleHandler::WeighingScaleHandler(QObject *parent)
-    : QThread(parent)
+WeighingScaleHandler::WeighingScaleHandler(unsigned short vendorId, unsigned short productId, QObject *parent)
+    : QThread(parent), m_vendorId(vendorId), m_productId(productId)
 {
 }
 
@@ -66,53 +68,95 @@ void WeighingScaleHandler::execOnNextStableWeight(std::function<void(State)> &&h
     m_stableWaitersLock.unlock();
 }
 
+bool WeighingScaleHandler::isAlive() const
+{
+    return m_hidHandle;
+}
+
+int WeighingScaleHandler::elapsedSinceLastMessage() const
+{
+    return m_lastSuccessfulRead.elapsed();
+}
+
+unsigned short WeighingScaleHandler::vendorId() const
+{
+    return m_vendorId;
+}
+
+unsigned short WeighingScaleHandler::productId() const
+{
+    return m_productId;
+}
+
+void WeighingScaleHandler::stop()
+{
+    m_stopped = true;
+}
+
 void WeighingScaleHandler::run()
 {
     int hidResult = hid_init();
     if (hidResult < 0) {
-        qCCritical(proofServiceWeighingScaleLog) << "HID Api can't be initialized, going down";
+        qCCritical(proofServiceWeighingScaleLog) << "HID API can't be initialized, going down";
         return;
     }
-    hid_device *hidHandle = hid_open(0x0b67, 0x555e, NULL);
-    if (!hidHandle) {
+
+    m_hidHandle = hid_open(m_vendorId, m_productId, NULL);
+    if (!m_hidHandle) {
         qCCritical(proofServiceWeighingScaleLog) << "HID device can't be opened, going down";
         return;
     }
 
-    unsigned char data[6];
-    memset(data, 0, 6);
-    while (true) {
-        hidResult = hid_read(hidHandle, data, 6);
-        if (hidResult < 6)
-            continue;
-        if (data[0] != 3)
-            continue;
-        Status status = static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::Overweight)));
-
-        auto packedState = packState(status,
-                               static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
-                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
-                               static_cast<char>(data[3]));
+    auto stateUpdater = [this](unsigned long long packedState) {
         m_instantState = packedState;
-
-        if (status == Status::Stable || status == Status::UnderZero || status == Status::StableZero) {
+        if (extractStateStatus(packedState) != Status::InMotion) {
             m_lastStableState = packedState;
             m_stableWaitersLock.lockForRead();
             bool waitersExist = m_stableWaiters.size();
             m_stableWaitersLock.unlock();
             if (waitersExist) {
-                m_stableWaitersLock.lockForWrite();
                 auto state = extractState(packedState);
+                m_stableWaitersLock.lockForWrite();
                 while (!m_stableWaiters.isEmpty())
                     m_stableWaiters.takeFirst()(state);
                 m_stableWaitersLock.unlock();
             }
         }
+    };
+
+    unsigned char data[6];
+    memset(data, 0, 6);
+    bool warningShown = false;
+    m_lastSuccessfulRead.start();
+    while (!m_stopped) {
+        hidResult = m_hidHandle ? hid_read_timeout(m_hidHandle, data, 6, READ_TIMEOUT) : 0;
+        if (hidResult < 6 || data[0] != 3) {
+            if (m_lastSuccessfulRead.elapsed() > READ_ERROR_TIMEOUT) {
+                if (!warningShown) {
+                    qCWarning(proofServiceWeighingScaleLog) << "No readable data from device, setting state to error";
+                    warningShown = true;
+                }
+                stateUpdater(packState(Status::Fault, Unit::Tael, 0, 0));
+                hid_close(m_hidHandle);
+                QThread::msleep(ERROR_COOLDOWN_TIMEOUT);
+                m_hidHandle = hid_open(m_vendorId, m_productId, NULL);
+            }
+            continue;
+        } else if (warningShown) {
+            warningShown = false;
+            qCDebug(proofServiceWeighingScaleLog) << "Device connection is live again";
+        }
+        m_lastSuccessfulRead.restart();
+        stateUpdater(packState(static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::Overweight))),
+                               static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
+                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
+                               static_cast<char>(data[3])));
     }
+    hid_close(m_hidHandle);
     hid_exit();
 }
 
-unsigned long long WeighingScaleHandler::packState(Status status,Unit unit, short weight, char scaleFactor) const
+unsigned long long WeighingScaleHandler::packState(Status status, Unit unit, short weight, char scaleFactor) const
 {
     unsigned long long result = static_cast<unsigned short>(weight);
     result |= static_cast<unsigned char>(scaleFactor) << 16;
@@ -127,6 +171,11 @@ WeighingScaleHandler::State WeighingScaleHandler::extractState(unsigned long lon
     return State{static_cast<Status>((state >> 32) & 0xFF), static_cast<Unit>((state >> 24) & 0xFF), value};
 }
 
+WeighingScaleHandler::Status WeighingScaleHandler::extractStateStatus(unsigned long long state) const
+{
+    return static_cast<Status>((state >> 32) & 0xFF);
+}
+
 QString WeighingScaleHandler::State::stringifiedStatus() const
 {
     return STATUSES.value(status, "");
@@ -136,4 +185,3 @@ QString WeighingScaleHandler::State::stringifiedUnit() const
 {
     return UNITS.value(unit, "");
 }
-
