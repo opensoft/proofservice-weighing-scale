@@ -89,22 +89,22 @@ void WeighingScaleHandler::run()
             continue;
         Status status = static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::Overweight)));
 
-        auto state = packState(status,
+        auto packedState = packState(status,
                                static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
                                static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
                                static_cast<char>(data[3]));
-        m_instantState = state;
+        m_instantState = packedState;
 
         if (status == Status::Stable || status == Status::UnderZero || status == Status::StableZero) {
-            m_lastStableState = state;
+            m_lastStableState = packedState;
             m_stableWaitersLock.lockForRead();
             bool waitersExist = m_stableWaiters.size();
             m_stableWaitersLock.unlock();
             if (waitersExist) {
                 m_stableWaitersLock.lockForWrite();
-                auto extractedState = extractState(state);
+                auto state = extractState(packedState);
                 while (!m_stableWaiters.isEmpty())
-                    m_stableWaiters.takeFirst()(extractedState);
+                    m_stableWaiters.takeFirst()(state);
                 m_stableWaitersLock.unlock();
             }
         }
