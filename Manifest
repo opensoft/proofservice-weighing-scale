@@ -1,0 +1,18 @@
+#!/bin/bash
+
+PACKAGE_NAME="proofservice-weighing-scale"
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_FILE="$PROJECT_DIR/proofservice-weighing-scale.pro"
+VERSION="$(grep -e "VERSION\ =" $PROJECT_FILE | sed 's/^VERSION\ =\ \(.*\)/\1/')"
+MAINTAINER="Dmitry Gurevich <dmitry.gurevich@tech-corps.com>"
+DESCRIPTION="Proof-based service for remote weighing using HID-compatible scales.
+ Proof-based service for remote weighing using HID-compatible scales.
+"
+
+PREBUILD="
+export VERSION_CHECK_PATTERN='qt5:proof';
+export IGNORE_PACKAGES_PATTERN='fglrx';
+export PROOF_PATH=/opt/Opensoft/proof;
+export LD_LIBRARY_PATH=\$PROOF_PATH/lib;
+export QMAKEFEATURES=\$PROOF_PATH/features;
+"
