@@ -34,7 +34,7 @@ void WeighingScaleRestServer::rest_get_Weight_Stable(QTcpSocket *socket, const Q
         auto state = m_handler->lastStableState();
         sendAnswer(socket, QJsonDocument(stateToJson(state)).toJson(QJsonDocument::Compact), "application/json", 200, "OK");
     } else {
-        m_handler->execOnNextStableWeight([this, socket](const WeighingScaleHandler::State &state) {
+        m_handler->execOnNextStableWeight([this, socket](WeighingScaleHandler::State state) {
             sendAnswer(socket, QJsonDocument(stateToJson(state)).toJson(QJsonDocument::Compact), "application/json", 200, "OK");
         });
     }
@@ -44,26 +44,8 @@ QJsonObject WeighingScaleRestServer::stateToJson(const WeighingScaleHandler::Sta
 {
     QJsonObject result;
     result.insert("weight", state.weight);
-    result.insert("units", state.unit);
-    switch (state.status) {
-    case WeighingScaleHandler::Status::Fault:
-    case WeighingScaleHandler::Status::UnknownStatus:
-        result.insert("status", "error");
-        break;
-    case WeighingScaleHandler::Status::InMotion:
-        result.insert("status", "in motion");
-        break;
-    case WeighingScaleHandler::Status::Overweight:
-        result.insert("status", "overweight");
-        break;
-    case WeighingScaleHandler::Status::StableZero:
-    case WeighingScaleHandler::Status::Stable:
-        result.insert("status", "stable");
-        break;
-    case WeighingScaleHandler::Status::UnderZero:
-        result.insert("status", "under zero");
-        break;
-    }
+    result.insert("units", state.stringifiedUnit());
+    result.insert("status", state.stringifiedStatus());
     return result;
 }
 

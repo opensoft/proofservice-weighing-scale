@@ -4,7 +4,7 @@ TEMPLATE = app
 VERSION = 0.17.12.25
 
 macx:QT_CONFIG -= no-pkg-config
-CONFIG += link_pkgconfig proofnetwork c++14
+CONFIG += link_pkgconfig proofnetwork
 PKGCONFIG += libusb-1.0
 
 SOURCES += \

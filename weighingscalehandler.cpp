@@ -24,7 +24,22 @@ static const QHash<WeighingScaleHandler::Unit, QString> UNITS = {
     {WeighingScaleHandler::Unit::Pound, "lb"}
 };
 
+static const QHash<WeighingScaleHandler::Status, QString> STATUSES = {
+    {WeighingScaleHandler::Status::UnknownStatus, "error"},
+    {WeighingScaleHandler::Status::Fault, "error"},
+    {WeighingScaleHandler::Status::StableZero, "stable"},
+    {WeighingScaleHandler::Status::InMotion, "in motion"},
+    {WeighingScaleHandler::Status::Stable, "stable"},
+    {WeighingScaleHandler::Status::UnderZero, "under zero"},
+    {WeighingScaleHandler::Status::Overweight, "overweight"}
+};
+
 uint qHash(WeighingScaleHandler::Unit value, uint seed)
+{
+    return qHash(static_cast<int>(value), seed);
+}
+
+uint qHash(WeighingScaleHandler::Status value, uint seed)
 {
     return qHash(static_cast<int>(value), seed);
 }
@@ -44,7 +59,7 @@ WeighingScaleHandler::State WeighingScaleHandler::instantState() const
     return extractState(m_instantState);
 }
 
-void WeighingScaleHandler::execOnNextStableWeight(std::function<void (const State &)> &&handler)
+void WeighingScaleHandler::execOnNextStableWeight(std::function<void(State)> &&handler)
 {
     m_stableWaitersLock.lockForWrite();
     m_stableWaiters << handler;
@@ -53,30 +68,31 @@ void WeighingScaleHandler::execOnNextStableWeight(std::function<void (const Stat
 
 void WeighingScaleHandler::run()
 {
-    int res;
-    unsigned char buf[6];
-    wchar_t wstr[512];
-    hid_device *handle;
+    int hidResult = hid_init();
+    if (hidResult < 0) {
+        qCCritical(proofServiceWeighingScaleLog) << "HID Api can't be initialized, going down";
+        return;
+    }
+    hid_device *hidHandle = hid_open(0x0b67, 0x555e, NULL);
+    if (!hidHandle) {
+        qCCritical(proofServiceWeighingScaleLog) << "HID device can't be opened, going down";
+        return;
+    }
 
-    res = hid_init();
-    handle = hid_open(0x0b67, 0x555e, NULL);
-    qDebug() << res << handle;
-    res = hid_get_manufacturer_string(handle, wstr, 512);
-    qDebug() << QString::fromWCharArray(wstr);
-    res = hid_get_product_string(handle, wstr, 512);
-    qDebug() << QString::fromWCharArray(wstr);
-
+    unsigned char data[6];
+    memset(data, 0, 6);
     while (true) {
-        memset(buf, 0, 6);
-        res = hid_read(handle, buf, 6);
-        if (buf[0] != 3)
+        hidResult = hid_read(hidHandle, data, 6);
+        if (hidResult < 6)
             continue;
-        Status status = static_cast<Status>(qMin(buf[1], static_cast<unsigned char>(Status::Overweight)));
+        if (data[0] != 3)
+            continue;
+        Status status = static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::Overweight)));
 
         auto state = packState(status,
-                               static_cast<Unit>(qMin(buf[2], static_cast<unsigned char>(Unit::Pound))),
-                               static_cast<short>((static_cast<unsigned short>(buf[5]) << 8) | static_cast<unsigned short>(buf[4])),
-                               static_cast<char>(buf[3]));
+                               static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
+                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
+                               static_cast<char>(data[3]));
         m_instantState = state;
 
         if (status == Status::Stable || status == Status::UnderZero || status == Status::StableZero) {
@@ -93,8 +109,7 @@ void WeighingScaleHandler::run()
             }
         }
     }
-
-    res = hid_exit();
+    hid_exit();
 }
 
 unsigned long long WeighingScaleHandler::packState(Status status,Unit unit, short weight, char scaleFactor) const
@@ -109,7 +124,16 @@ unsigned long long WeighingScaleHandler::packState(Status status,Unit unit, shor
 WeighingScaleHandler::State WeighingScaleHandler::extractState(unsigned long long state) const
 {
     double value = static_cast<double>(static_cast<short>(state & 0xFFFF)) * pow(10, static_cast<char>((state >> 16) & 0xFF));
-    return State{static_cast<Status>((state >> 32) & 0xFF), value, UNITS.value(static_cast<Unit>((state >> 24) & 0xFF), "")};
+    return State{static_cast<Status>((state >> 32) & 0xFF), static_cast<Unit>((state >> 24) & 0xFF), value};
 }
 
+QString WeighingScaleHandler::State::stringifiedStatus() const
+{
+    return STATUSES.value(status, "");
+}
+
+QString WeighingScaleHandler::State::stringifiedUnit() const
+{
+    return UNITS.value(unit, "");
+}
 
