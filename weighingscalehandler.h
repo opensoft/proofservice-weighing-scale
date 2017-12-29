@@ -1,9 +1,12 @@
 #ifndef WEIGHINGSCALEHANDLER_H
 #define WEIGHINGSCALEHANDLER_H
 
+#include "3rdparty/hidapi/hidapi.h"
+
 #include <QThread>
 #include <QReadWriteLock>
 #include <QLinkedList>
+#include <QTime>
 
 #include <atomic>
 #include <functional>
@@ -48,12 +51,18 @@ public:
         double weight;
     };
 
-    explicit WeighingScaleHandler(QObject *parent = nullptr);
+    explicit WeighingScaleHandler(unsigned short vendorId, unsigned short productId, QObject *parent = nullptr);
 
     State lastStableState() const;
     State instantState() const;
-
     void execOnNextStableWeight(std::function<void(State)> &&handler);
+
+    bool isAlive() const;
+    int elapsedSinceLastMessage() const;
+    unsigned short vendorId() const;
+    unsigned short productId() const;
+
+    void stop();
 
 protected:
     void run() override;
@@ -61,12 +70,21 @@ protected:
 private:
     unsigned long long packState(Status status, Unit unit, short weight, char scaleFactor) const;
     State extractState(unsigned long long state) const;
+    Status extractStateStatus(unsigned long long state) const;
+
+    unsigned short m_vendorId = 0;
+    unsigned short m_productId = 0;
+
+    bool m_stopped = false;
 
     std::atomic_ullong m_instantState {0};
     std::atomic_ullong m_lastStableState {0};
 
     QLinkedList<std::function<void(State)>> m_stableWaiters;
     QReadWriteLock m_stableWaitersLock;
+
+    hid_device *m_hidHandle = nullptr;
+    QTime m_lastSuccessfulRead;
 };
 
 uint qHash(WeighingScaleHandler::Unit value, uint seed = 0);

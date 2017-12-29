@@ -20,6 +20,10 @@ protected slots:
                                  const QUrlQuery &queryParams, const QByteArray &body);
     void rest_get_Weight_Stable(QTcpSocket *socket, const QStringList &headers, const QStringList &methodVariableParts,
                                 const QUrlQuery &queryParams, const QByteArray &body);
+
+protected:
+    QMap<QString, QPair<QDateTime, QVariant>> healthStatus(bool quick) const override;
+
 private:
     QJsonObject stateToJson(const WeighingScaleHandler::State &state);
     WeighingScaleHandler *m_handler;
