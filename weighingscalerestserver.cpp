@@ -20,6 +20,7 @@ WeighingScaleRestServer::WeighingScaleRestServer(int port)
     if (rawProduct.startsWith("0x", Qt::CaseInsensitive))
         rawProduct.remove(0, 2);
     m_handler = new WeighingScaleHandler(rawVendor.toUShort(nullptr, 16), rawProduct.toUShort(nullptr, 16));
+    m_handler->moveToThread(qApp->thread());
     m_handler->start();
 }
 
