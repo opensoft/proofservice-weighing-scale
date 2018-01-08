@@ -22,7 +22,9 @@ public:
         InMotion = 3,
         Stable = 4,
         UnderZero = 5,
-        Overweight = 6
+        Overweight = 6,
+        DummyValue = 7, // Should never happen, added to make it easier for boundaries check
+        NotInitialized = 8
     };
     Q_ENUM(WeighingScaleHandler::Status)
 

@@ -33,7 +33,9 @@ static const QHash<WeighingScaleHandler::Status, QString> STATUSES = {
     {WeighingScaleHandler::Status::InMotion, "in motion"},
     {WeighingScaleHandler::Status::Stable, "stable"},
     {WeighingScaleHandler::Status::UnderZero, "under zero"},
-    {WeighingScaleHandler::Status::Overweight, "overweight"}
+    {WeighingScaleHandler::Status::Overweight, "overweight"},
+    {WeighingScaleHandler::Status::DummyValue, "error"},
+    {WeighingScaleHandler::Status::NotInitialized, "not initialized"}
 };
 
 uint qHash(WeighingScaleHandler::Unit value, uint seed)
@@ -147,7 +149,7 @@ void WeighingScaleHandler::run()
             qCDebug(proofServiceWeighingScaleLog) << "Device connection is live again";
         }
         m_lastSuccessfulRead.restart();
-        stateUpdater(packState(static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::Overweight))),
+        stateUpdater(packState(static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::NotInitialized))),
                                static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
                                static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
                                static_cast<char>(data[3])));
