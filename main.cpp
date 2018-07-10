@@ -4,7 +4,6 @@
 #include "proofcore/coreapplication.h"
 #include "proofcore/settings.h"
 #include "proofcore/settingsgroup.h"
-
 #include "proofcore/updatemanager.h"
 
 #include <QTimer>

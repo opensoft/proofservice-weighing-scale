@@ -10,33 +10,25 @@ constexpr int READ_TIMEOUT = 500;
 constexpr int READ_ERROR_TIMEOUT = 5000;
 constexpr int ERROR_COOLDOWN_TIMEOUT = 100;
 
-static const QHash<WeighingScaleHandler::Unit, QString> UNITS = {
-    {WeighingScaleHandler::Unit::UnknownUnit, ""},
-    {WeighingScaleHandler::Unit::Milligram, "mg"},
-    {WeighingScaleHandler::Unit::Gram, "g"},
-    {WeighingScaleHandler::Unit::Kilogram, "kg"},
-    {WeighingScaleHandler::Unit::Carat, "ct"},
-    {WeighingScaleHandler::Unit::Tael, "tael"},
-    {WeighingScaleHandler::Unit::Grain, "gr"},
-    {WeighingScaleHandler::Unit::Pennyweight, "dwt"},
-    {WeighingScaleHandler::Unit::MetricTon, "ton"},
-    {WeighingScaleHandler::Unit::AvoirTon, "short ton"},
-    {WeighingScaleHandler::Unit::TroyOunce, "oz t"},
-    {WeighingScaleHandler::Unit::Ounce, "oz"},
-    {WeighingScaleHandler::Unit::Pound, "lb"}
-};
+static const QHash<WeighingScaleHandler::Unit, QString> UNITS =
+    {{WeighingScaleHandler::Unit::UnknownUnit, ""},   {WeighingScaleHandler::Unit::Milligram, "mg"},
+     {WeighingScaleHandler::Unit::Gram, "g"},         {WeighingScaleHandler::Unit::Kilogram, "kg"},
+     {WeighingScaleHandler::Unit::Carat, "ct"},       {WeighingScaleHandler::Unit::Tael, "tael"},
+     {WeighingScaleHandler::Unit::Grain, "gr"},       {WeighingScaleHandler::Unit::Pennyweight, "dwt"},
+     {WeighingScaleHandler::Unit::MetricTon, "ton"},  {WeighingScaleHandler::Unit::AvoirTon, "short ton"},
+     {WeighingScaleHandler::Unit::TroyOunce, "oz t"}, {WeighingScaleHandler::Unit::Ounce, "oz"},
+     {WeighingScaleHandler::Unit::Pound, "lb"}};
 
-static const QHash<WeighingScaleHandler::Status, QString> STATUSES = {
-    {WeighingScaleHandler::Status::UnknownStatus, "error"},
-    {WeighingScaleHandler::Status::Fault, "error"},
-    {WeighingScaleHandler::Status::StableZero, "stable"},
-    {WeighingScaleHandler::Status::InMotion, "in motion"},
-    {WeighingScaleHandler::Status::Stable, "stable"},
-    {WeighingScaleHandler::Status::UnderZero, "under zero"},
-    {WeighingScaleHandler::Status::Overweight, "overweight"},
-    {WeighingScaleHandler::Status::DummyValue, "error"},
-    {WeighingScaleHandler::Status::NotInitialized, "not initialized"}
-};
+static const QHash<WeighingScaleHandler::Status, QString> STATUSES =
+    {{WeighingScaleHandler::Status::UnknownStatus, "error"},
+     {WeighingScaleHandler::Status::Fault, "error"},
+     {WeighingScaleHandler::Status::StableZero, "stable"},
+     {WeighingScaleHandler::Status::InMotion, "in motion"},
+     {WeighingScaleHandler::Status::Stable, "stable"},
+     {WeighingScaleHandler::Status::UnderZero, "under zero"},
+     {WeighingScaleHandler::Status::Overweight, "overweight"},
+     {WeighingScaleHandler::Status::DummyValue, "error"},
+     {WeighingScaleHandler::Status::NotInitialized, "not initialized"}};
 
 uint qHash(WeighingScaleHandler::Unit value, uint seed)
 {
@@ -50,8 +42,7 @@ uint qHash(WeighingScaleHandler::Status value, uint seed)
 
 WeighingScaleHandler::WeighingScaleHandler(unsigned short vendorId, unsigned short productId, QObject *parent)
     : QThread(parent), m_vendorId(vendorId), m_productId(productId)
-{
-}
+{}
 
 WeighingScaleHandler::State WeighingScaleHandler::lastStableState() const
 {
@@ -151,7 +142,8 @@ void WeighingScaleHandler::run()
         m_lastSuccessfulRead.restart();
         stateUpdater(packState(static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::NotInitialized))),
                                static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
-                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8) | static_cast<unsigned short>(data[4])),
+                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8)
+                                                  | static_cast<unsigned short>(data[4])),
                                static_cast<char>(data[3])));
     }
     hid_close(m_hidHandle);
@@ -169,7 +161,8 @@ unsigned long long WeighingScaleHandler::packState(Status status, Unit unit, sho
 
 WeighingScaleHandler::State WeighingScaleHandler::extractState(unsigned long long state) const
 {
-    double value = static_cast<double>(static_cast<short>(state & 0xFFFF)) * pow(10, static_cast<char>((state >> 16) & 0xFF));
+    double value = static_cast<double>(static_cast<short>(state & 0xFFFF))
+                   * pow(10, static_cast<char>((state >> 16) & 0xFF));
     return State{static_cast<Status>((state >> 32) & 0xFF), static_cast<Unit>((state >> 24) & 0xFF), value};
 }
 
