@@ -3,6 +3,8 @@
 
 #include "weighingscalehandler.h"
 
+#include "proofcore/basic_package.h"
+
 #include "proofnetwork/abstractrestserver.h"
 
 class WeighingScaleHandler;
@@ -12,7 +14,7 @@ class WeighingScaleRestServer : public Proof::AbstractRestServer
 {
     Q_OBJECT
 public:
-    explicit WeighingScaleRestServer(int port);
+    explicit WeighingScaleRestServer(quint16 port);
     ~WeighingScaleRestServer();
 
 protected slots:
@@ -22,7 +24,7 @@ protected slots:
                                 const QUrlQuery &queryParams, const QByteArray &body);
 
 protected:
-    QMap<QString, QPair<QDateTime, QVariant>> healthStatus(bool quick) const override;
+    FutureSP<Proof::HealthStatusMap> healthStatus(bool quick) const override;
 
 private:
     QJsonObject stateToJson(const WeighingScaleHandler::State &state);

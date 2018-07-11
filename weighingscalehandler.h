@@ -3,9 +3,9 @@
 
 #include "3rdparty/hidapi/hidapi.h"
 
-#include <QThread>
-#include <QReadWriteLock>
 #include <QLinkedList>
+#include <QReadWriteLock>
+#include <QThread>
 #include <QTime>
 
 #include <atomic>
@@ -15,7 +15,8 @@ class WeighingScaleHandler : public QThread
 {
     Q_OBJECT
 public:
-    enum class Status {
+    enum class Status
+    {
         UnknownStatus = 0,
         Fault = 1,
         StableZero = 2,
@@ -28,7 +29,8 @@ public:
     };
     Q_ENUM(WeighingScaleHandler::Status)
 
-    enum class Unit {
+    enum class Unit
+    {
         UnknownUnit = 0,
         Milligram = 1,
         Gram = 2,
@@ -45,7 +47,8 @@ public:
     };
     Q_ENUM(WeighingScaleHandler::Unit)
 
-    struct State {
+    struct State
+    {
         QString stringifiedStatus() const;
         QString stringifiedUnit() const;
         Status status;
@@ -79,8 +82,8 @@ private:
 
     bool m_stopped = false;
 
-    std::atomic_ullong m_instantState {0};
-    std::atomic_ullong m_lastStableState {0};
+    std::atomic_ullong m_instantState{0};
+    std::atomic_ullong m_lastStableState{0};
 
     QLinkedList<std::function<void(State)>> m_stableWaiters;
     QReadWriteLock m_stableWaitersLock;
