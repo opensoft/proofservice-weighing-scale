@@ -10,7 +10,7 @@ git:
 cache:
   directories:
     - $HOME/builder_ccache
-    - $HOME/builder_result
+    - $HOME/full_build
     - $HOME/proof-bin
 
 env:
@@ -53,7 +53,6 @@ jobs:
       script: $HOME/proof-bin/dev-tools/travis/apps/compile/clang-format_check.sh
     - <<: *compile
       name: Static code analysis with clazy
-      before_script: export EXTRA_DEPS='libusb-1.0-0-dev'
       script: $HOME/proof-bin/dev-tools/travis/apps/compile/clazy_check.sh
     - &post-compile
       stage: Post compilation
