@@ -59,8 +59,8 @@ jobs:
       stage: Post compilation
       name: Debian package upload to S3 (non-release)
       if: type != pull_request AND tag IS blank AND branch != master
-      script: $HOME/proof-bin/dev-tools/travis/app/post-compile/deb_upload.sh
+      script: $HOME/proof-bin/dev-tools/travis/apps/post-compile/deb_upload.sh
     - <<: *post-compile
       name: Debian package upload to S3 (release)
       if: type != pull_request AND tag IS present
-      script: $HOME/proof-bin/dev-tools/travis/app/post-compile/deb_upload.sh release
+      script: $HOME/proof-bin/dev-tools/travis/apps/post-compile/deb_upload.sh release
