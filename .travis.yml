@@ -10,7 +10,7 @@ git:
 cache:
   directories:
     - $HOME/builder_ccache
-    - $HOME/builder_result
+    - $HOME/full_build
     - $HOME/proof-bin
 
 env:
@@ -21,14 +21,15 @@ env:
     - secure: oRiXsVY5iZ/s51wVrgO4aq9Uiv/rR6JOwmvCbfYAZfKWZnZ4B8Muy/bDp8gERVPsax4+0kF+kpQZ8Xl99H0Y13LHWqL2q8u7/7yXk4CT2XnRhFNMjUTKM0iWQCjdvxW0xlV0j3mHx+2hswpYk7vsiH+tr4W83Y8aSYZ7NgAJBydMQeWhxPvVkrz1cXS1T1Bx0n0ynA/yMiOeZcu2JptOcySSk0GwHa/VBYDGjfqQdp5j2NcM29jSe4vxhTzkR+STIB6LB5SrbigxK2ZcbF394FS4HoXxxgITGYONo7fvtkoQIF+ahzhIFgNM/yZkLwKwCLD6WnoFSXTJPm4WbvWlhNLioD2ENk/ZFhYdOPG0fpiE61ch2xZ1WgGWVQ/LZABty1CPZcudnU6GohdkL3nmA+bkjAcepxbDO5rJkX9jpSkn9n7QE0ZM0brRKTIjBdvi8AgFDNLSDfwR8sPdT3aAaLBl7ZjuNgxidrKtMJMDKzNI3+cp2mqq8n01q5OZI8WrgJuYHoux0K0qg4SzSsB2XgVp+zbSKJ5xExZqs4mYZa5IBYZfAD3zv+nykmORo18IHpdSNW2SJLeRGYxYSci3udvjCQirClVhQxkrO6Mtx+U4cL5IQHY3UG+v8TpeRLYaK6TtyvUTTd3SbSErGrwNqGyAATIVC+tbaFilcZB2tgs=
     - secure: Q/vZzd1hgCdubBmuCCkXTOBz5AR0o3VAWNGPrL92CEupxcY+4uD4cgmnxB15kSjo5fHAwdB8PJ7DjdcX7msUCxNuzymVBtUBajYCBwQS9p+8hlaoG94XklW99ECDSocKChaY41Kx6mUWJnzFLgACjnEK9lG3gATrhMgErv2EPKbwfJgJ1Ba/aW3z1CY10ru+n83MI2d+OGX6mayOfV8SeIc3eSdmw0Fzs7Bw9uLxbQLm+j7d4UaWH9S9+isI9RiVNHGckg6uUNVCdRgT3DAD4jfXBaQTf87f8Q98y7JiJKdJ8LC45YaKH3bBxSU+Beq0lLYc3j7VeKrkCENYLVO78g9/zVhpnMedWjliNXua25ik+0Ielz2H3pkp1gcnyxtUj1YKUwITCvn5jmvvLtmsX+r7JEiLiXasGpWwxCeCPhCRHrsj2vSUZ+h9u32C6oy/0nvQwaSOW/Xe0JM/y2f8vMypdqq00bPUKt5RH8U3m8yF+UPwK+vzy+q6ZGXCLksC1jF4H6izFqvMFwT6GjD/mCCE7l2Um7+nPLYT9Z8Dq6BOOuILWnt3dbX3lirG2eJ1D+ZPRE+9hs7ccW2YXtylO/OmmVcjmxs4wX73a7kzvj42TGQxjMWP9NVOk3SNmK9zxcT6nlY8fsJIxkuUL0B/OJE1SIYLQ4hyt7JTlxRclak=
 
+before_install: export -f travis_fold && export -f travis_time_start && export -f travis_time_finish && export -f travis_nanoseconds
+
 jobs:
   include:
     - &pre-compile
       stage: Pre compilation
       name: Proof installation (non-release)
       if: type != pull_request AND tag IS blank AND branch != master
-      before_install:
-        - pip install --user awscli
+      before_script: pip install --user awscli
       script:
         - cd $HOME
         - aws s3 cp s3://proof.travis.builds/$TRAVIS_BRANCH/proof-bin-debian9.tar.gz proof-bin.tar.gz ||
@@ -37,8 +38,7 @@ jobs:
     - <<: *pre-compile
       name: Proof installation (release)
       if: type != pull_request AND (tag IS present OR branch = master)
-      before_install:
-        - pip install --user awscli
+      before_script: pip install --user awscli
       script:
         - cd $HOME
         - aws s3 cp s3://proof.travis.builds/__releases/proof/$PROOF_VERSION/proof-bin-debian9.tar.gz proof-bin.tar.gz || travis_terminate 1
@@ -46,116 +46,20 @@ jobs:
     - &compile
       stage: compilation and static checks
       name: Compilation (with ccache)
-      before_script:
-        - docker pull dkormalev/proof-builder-ccache:latest
-        - mkdir $HOME/builder_logs
-        - rm -rf $HOME/builder_result && mkdir $HOME/builder_result
-        - docker run -id --name builder
-            -v $(pwd):/sandbox/target_src -v $HOME/proof-bin:/sandbox/proof-bin -v $HOME/builder_logs:/sandbox/logs
-            -v $HOME/builder_ccache:/root/.ccache -v $HOME/builder_result:/sandbox/build
-            -e "PROOF_PATH=/sandbox/proof-bin" -e "QMAKEFEATURES=/sandbox/proof-bin/features"
-            -w="/sandbox"
-            dkormalev/proof-builder-ccache tail -f /dev/null
-        - docker ps
-        - docker exec -t builder bash -c "apt-get -qq update"
-        - docker exec -t builder bash -c "apt-get -qq install libusb-1.0-0-dev -y --no-install-recommends"
-      script:
-        - echo "Running qmake..." && echo -en 'travis_fold:start:build.qmake\\r'
-        - docker exec -t builder bash -c "exec 3>&1; set -o pipefail; rm -rf /sandbox/logs/*; cd build;
-              qmake -r 'QMAKE_CXXFLAGS += -ferror-limit=0 -fcolor-diagnostics' PREFIX="/sandbox/package-$TARGET_NAME"
-                ../target_src/$TARGET_NAME.pro 2>&1 1>&3 | (tee /sandbox/logs/errors.log 1>&2)" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.qmake\\r' && $HOME/proof-bin/dev-tools/travis/check_for_errorslog.sh qmake || true
-        - echo "Compiling..." && echo -en 'travis_fold:start:build.compile\\r'
-        - docker exec -t builder bash -c "exec 3>&1; set -o pipefail; rm -rf /sandbox/logs/*; cd build;
-              make -j4 2>&1 1>&3 | (tee /sandbox/logs/errors.log 1>&2)" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.compile\\r' && $HOME/proof-bin/dev-tools/travis/check_for_errorslog.sh compilation || true
-        - echo "Make install..." && echo -en 'travis_fold:start:build.install\\r'
-        - docker exec -t builder bash -c "mkdir -p /sandbox/package-$TARGET_NAME/opt/Opensoft/proof/bin
-              && cd /sandbox/build && make install" || travis_terminate 1
-        - docker exec -t builder bash -c "tar -czf package-$TARGET_NAME.tar.gz package-$TARGET_NAME && mv package-$TARGET_NAME.tar.gz build/" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.install\\r'
+      before_script: export EXTRA_DEPS='libusb-1.0-0-dev'
+      script: $HOME/proof-bin/dev-tools/travis/apps/compile/linux_compile.sh
     - <<: *compile
       name: Code style check with clang-format
-      env: DUMMY=clang-format #We don't need our default cache here
-      before_install:
-        - git config --global color.ui always
-      before_script:
-        - docker pull dkormalev/proof-check-codestyle:latest
-        - docker run -id --name codestyle-check -v $(pwd):/sandbox/target_src -w="/sandbox/target_src" dkormalev/proof-check-codestyle tail -f /dev/null
-        - docker ps
-      script:
-        - docker exec -t codestyle-check bash -c "find -iname '*.h' -o -iname '*.cpp' | grep -v 3rdparty | grep -v gtest | xargs clang-format -i" || travis_terminate 1
-        - git diff
-        - travis_terminate `git diff | wc -l`
+      script: $HOME/proof-bin/dev-tools/travis/apps/compile/clang-format_check.sh
     - <<: *compile
       name: Static code analysis with clazy
-      before_script:
-        - docker pull dkormalev/proof-builder-clazy:latest
-        - mkdir $HOME/builder_logs
-        - docker run -id --name clazy
-            -v $(pwd):/sandbox/target_src -v $HOME/proof-bin:/sandbox/proof-bin -v $HOME/builder_logs:/sandbox/logs
-            -e "PROOF_PATH=/sandbox/proof-bin" -e "QMAKEFEATURES=/sandbox/proof-bin/features"
-            -w="/sandbox"
-            dkormalev/proof-builder-clazy tail -f /dev/null
-        - docker ps
-        - docker exec -t clazy bash -c "apt-get -qq update"
-        - docker exec -t clazy bash -c "apt-get -qq install libusb-1.0-0-dev -y --no-install-recommends"
-      script:
-        - echo "Running qmake..." && echo -en 'travis_fold:start:build.qmake\\r'
-        - docker exec -t clazy bash -c "exec 3>&1; set -o pipefail; rm -rf /sandbox/logs/*; mkdir build && cd build;
-              qmake -r 'QMAKE_CXXFLAGS += -ferror-limit=0 -fcolor-diagnostics'
-                'QMAKE_CXXFLAGS += -Xclang -plugin-arg-clang-lazy'
-                'QMAKE_CXXFLAGS += -Xclang level3,container-inside-loop,inefficient-qlist,qhash-with-char-pointer-key,qstring-varargs,tr-non-literal,unneeded-cast,no-non-pod-global-static,no-ctor-missing-parent-argument,no-detaching-member,no-qstring-allocations'
-                'QMAKE_CXXFLAGS += -isystem /opt/Opensoft/Qt/include'
-                ../target_src/$TARGET_NAME.pro 2>&1 1>&3 | (tee /sandbox/logs/errors.log 1>&2)" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.qmake\\r' && $HOME/proof-bin/dev-tools/travis/check_for_errorslog.sh qmake || true
-        - echo "Compiling..." && echo -en 'travis_fold:start:build.compile\\r'
-        - docker exec -t clazy bash -c "exec 3>&1; set -o pipefail; rm -rf /sandbox/logs/*; cd build;
-              make -j4 2>&1 1>&3 | (tee /sandbox/logs/errors.log 1>&2)"
-        - echo -en 'travis_fold:end:build.compile\\r' && $HOME/proof-bin/dev-tools/travis/check_for_errorslog.sh compilation || travis_terminate 1
+      script: $HOME/proof-bin/dev-tools/travis/apps/compile/clazy_check.sh
     - &post-compile
       stage: Post compilation
       name: Debian package upload to S3 (non-release)
       if: type != pull_request AND tag IS blank AND branch != master
-      before_install:
-        - pip install --user awscli
-      before_script:
-        - docker pull dkormalev/proof-builder-base:latest
-        - cp -R $HOME/builder_result $HOME/full_build
-        - docker run -id --name builder
-            -v $(pwd):/sandbox/target_src -v $HOME/full_build:/sandbox/build -v $HOME/proof-bin:/opt/Opensoft/proof
-            -e "BUILD_ROOT=/sandbox/build" -e "PACKAGE_ROOT=/sandbox/package-$TARGET_NAME" -e "SKIP_BUILD_FOR_DEB_PACKAGE=true"
-            -e "PROOF_PATH=/opt/Opensoft/proof" -e "QMAKEFEATURES=/opt/Opensoft/proof/features"
-            -w="/sandbox"
-            dkormalev/proof-builder-base tail -f /dev/null
-        - docker ps
-      script:
-        - export APP_VERSION="$(grep -e 'VERSION\ =' $TARGET_NAME.pro | sed 's/^VERSION\ =\ \(.*\)/\1/')"
-        - echo "Creating deb package..." && echo -en 'travis_fold:start:build.deb\\r'
-        - docker exec -t builder bash -c "mv build/package-$TARGET_NAME.tar.gz ./ && tar -xzf package-$TARGET_NAME.tar.gz" || travis_terminate 1
-        - docker exec -t builder bash -c "/opt/Opensoft/proof/deploy/deb/build-deb-package -f /sandbox/target_src/Manifest /sandbox/target_src" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.deb\\r'
-        - $HOME/proof-bin/dev-tools/travis/s3_upload.sh $TARGET_NAME-$APP_VERSION.deb $TRAVIS_BRANCH $TARGET_NAME-$APP_VERSION-$TRAVIS_BRANCH.deb
+      script: $HOME/proof-bin/dev-tools/travis/apps/post-compile/deb_upload.sh
     - <<: *post-compile
       name: Debian package upload to S3 (release)
       if: type != pull_request AND tag IS present
-      before_install:
-        - pip install --user awscli
-      before_script:
-        - docker pull dkormalev/proof-builder-base:latest
-        - cp -R $HOME/builder_result $HOME/full_build
-        - docker run -id --name builder
-            -v $(pwd):/sandbox/target_src -v $HOME/full_build:/sandbox/build -v $HOME/proof-bin:/opt/Opensoft/proof
-            -e "BUILD_ROOT=/sandbox/build" -e "PACKAGE_ROOT=/sandbox/package-$TARGET_NAME" -e "SKIP_BUILD_FOR_DEB_PACKAGE=true"
-            -e "PROOF_PATH=/opt/Opensoft/proof" -e "QMAKEFEATURES=/opt/Opensoft/proof/features"
-            -w="/sandbox"
-            dkormalev/proof-builder-base tail -f /dev/null
-        - docker ps
-      script:
-        - export APP_VERSION="$(grep -e 'VERSION\ =' $TARGET_NAME.pro | sed 's/^VERSION\ =\ \(.*\)/\1/')"
-        - echo "Creating deb package..." && echo -en 'travis_fold:start:build.deb\\r'
-        - docker exec -t builder bash -c "mv build/package-$TARGET_NAME.tar.gz ./ && tar -xzf package-$TARGET_NAME.tar.gz" || travis_terminate 1
-        - docker exec -t builder bash -c "/opt/Opensoft/proof/deploy/deb/build-deb-package -f /sandbox/target_src/Manifest /sandbox/target_src" || travis_terminate 1
-        - echo -en 'travis_fold:end:build.deb\\r'
-        - $HOME/proof-bin/dev-tools/travis/s3_upload.sh $TARGET_NAME-$APP_VERSION.deb __releases/proof $TARGET_NAME-$APP_VERSION.deb
-
+      script: $HOME/proof-bin/dev-tools/travis/apps/post-compile/deb_upload.sh release
