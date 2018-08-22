@@ -27,7 +27,7 @@ protected:
     FutureSP<Proof::HealthStatusMap> healthStatus(bool quick) const override;
 
 private:
-    QJsonObject stateToJson(const WeighingScaleHandler::State &state);
+    QJsonObject stateToJson(WeighingScaleHandler::State state);
     WeighingScaleHandler *m_handler;
 };
 
