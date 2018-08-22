@@ -73,7 +73,7 @@ FutureSP<Proof::HealthStatusMap> WeighingScaleRestServer::healthStatus(bool) con
                                 {current, m_handler->elapsedSinceLastMessage()}}});
 }
 
-QJsonObject WeighingScaleRestServer::stateToJson(const WeighingScaleHandler::State &state)
+QJsonObject WeighingScaleRestServer::stateToJson(WeighingScaleHandler::State state)
 {
     QJsonObject result;
     result.insert("weight", state.weight);
