@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/opensoft/proofservice-weighing-scale.svg?token=rjKq7aueGr7hgysP2ESt&branch=develop)](https://travis-ci.com/opensoft/proofservice-weighing-scale)
+
 # proofservice-weighing-scale
 Proxy service for working with weighing scales (only HID-compatible for now)
 
