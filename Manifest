@@ -4,7 +4,7 @@ PACKAGE_NAME="proofservice-weighing-scale"
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_FILE="$PROJECT_DIR/proofservice-weighing-scale.pro"
 VERSION="$(grep -e "VERSION\ =" $PROJECT_FILE | sed 's/^VERSION\ =\ \(.*\)/\1/')"
-MAINTAINER="Dmitry Gurevich <dmitry.gurevich@tech-corps.com>"
+MAINTAINER="Denis Kormalev <denis.kormalev@opensoftdev.com>"
 DESCRIPTION="Proof-based service for remote weighing using HID-compatible scales.
  Proof-based service for remote weighing using HID-compatible scales.
 "

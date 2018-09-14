@@ -4,9 +4,6 @@ language: cpp
 services:
   - docker
 
-git:
-  depth: 1
-
 env:
   global:
     - TARGET_NAME=`echo "$TRAVIS_REPO_SLUG" | sed -r 's|(.*/)?(.+)|\2|'`
@@ -51,9 +48,11 @@ jobs:
       script: $HOME/proof-bin/dev-tools/travis/apps/compile/clang-format_check.sh
     - <<: *compile
       name: Static code analysis with clazy
+      before_script: export EXTRA_DEPS='libusb-1.0-0-dev'
       script: $HOME/proof-bin/dev-tools/travis/apps/compile/clazy_check.sh
     - &post-compile
       stage: Post compilation
       name: Debian package upload to S3
       if: type != pull_request AND branch != master
+      before_script: export EXTRA_DEPS='libusb-1.0-0-dev'
       script: $HOME/proof-bin/dev-tools/travis/apps/post-compile/deb_upload.sh
