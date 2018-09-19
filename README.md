@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/opensoft/proofservice-weighing-scale.svg?token=rjKq7aueGr7hgysP2ESt&branch=develop)](https://travis-ci.com/opensoft/proofservice-weighing-scale)
+[![Build Status](https://travis-ci.com/opensoft/proofservice-weighing-scale.svg?branch=develop)](https://travis-ci.com/opensoft/proofservice-weighing-scale)
 
 # proofservice-weighing-scale
 Proxy service for working with weighing scales (only HID-compatible for now)
@@ -21,14 +21,6 @@ qmake ../proofservice-weighing-scale.pro
 make -jN
 ```
 Where N is number of compile tasks that will run in parallel.
-
-Also proof building scripts can be used to build Debian package. proof and proof-dev packages should be installed.
-
-```bash
-/opt/Opensoft/proof/tools/build-deb-package -f Manifest
-```
-
-Package will be placed to the project root.
 
 How-to use
 ----------
