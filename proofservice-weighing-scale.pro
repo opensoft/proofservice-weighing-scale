@@ -1,7 +1,7 @@
 TARGET = proofservice-weighing-scale
 TEMPLATE = app
 
-VERSION = 0.18.3.14
+VERSION = 0.18.10.4
 
 macx:QT_CONFIG -= no-pkg-config
 CONFIG += link_pkgconfig proofnetwork
