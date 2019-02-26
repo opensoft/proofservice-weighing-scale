@@ -86,7 +86,7 @@ void WeighingScaleRestServer::rest_get_Weight_Stable(QTcpSocket *socket, const Q
     }
 }
 
-FutureSP<Proof::HealthStatusMap> WeighingScaleRestServer::healthStatus(bool) const
+Future<Proof::HealthStatusMap> WeighingScaleRestServer::healthStatus(bool) const
 {
     QDateTime current = QDateTime::currentDateTimeUtc();
     return Future<Proof::HealthStatusMap>::successful(
