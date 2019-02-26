@@ -50,7 +50,7 @@ protected slots:
                                 const QUrlQuery &queryParams, const QByteArray &body);
 
 protected:
-    FutureSP<Proof::HealthStatusMap> healthStatus(bool quick) const override;
+    Future<Proof::HealthStatusMap> healthStatus(bool quick) const override;
 
 private:
     QJsonObject stateToJson(WeighingScaleHandler::State state);
