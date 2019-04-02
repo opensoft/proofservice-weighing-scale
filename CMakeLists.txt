@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.0)
 find_package(Proof REQUIRED)
-proof_project(proofservice-weighing-scale VERSION 0.19.4.2)
+proof_project(proofservice-weighing-scale VERSION 0.19.4.3)
 enable_language(C)
 
 find_package(libusb)
