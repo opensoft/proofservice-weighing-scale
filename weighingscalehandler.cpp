@@ -36,26 +36,6 @@ constexpr int READ_TIMEOUT = 500;
 constexpr int READ_ERROR_TIMEOUT = 5000;
 constexpr int ERROR_COOLDOWN_TIMEOUT = 100;
 
-static const QHash<WeighingScaleHandler::Unit, QString> UNITS =
-    {{WeighingScaleHandler::Unit::UnknownUnit, ""},   {WeighingScaleHandler::Unit::Milligram, "mg"},
-     {WeighingScaleHandler::Unit::Gram, "g"},         {WeighingScaleHandler::Unit::Kilogram, "kg"},
-     {WeighingScaleHandler::Unit::Carat, "ct"},       {WeighingScaleHandler::Unit::Tael, "tael"},
-     {WeighingScaleHandler::Unit::Grain, "gr"},       {WeighingScaleHandler::Unit::Pennyweight, "dwt"},
-     {WeighingScaleHandler::Unit::MetricTon, "ton"},  {WeighingScaleHandler::Unit::AvoirTon, "short ton"},
-     {WeighingScaleHandler::Unit::TroyOunce, "oz t"}, {WeighingScaleHandler::Unit::Ounce, "oz"},
-     {WeighingScaleHandler::Unit::Pound, "lb"}};
-
-static const QHash<WeighingScaleHandler::Status, QString> STATUSES =
-    {{WeighingScaleHandler::Status::UnknownStatus, "error"},
-     {WeighingScaleHandler::Status::Fault, "error"},
-     {WeighingScaleHandler::Status::StableZero, "stable"},
-     {WeighingScaleHandler::Status::InMotion, "in motion"},
-     {WeighingScaleHandler::Status::Stable, "stable"},
-     {WeighingScaleHandler::Status::UnderZero, "under zero"},
-     {WeighingScaleHandler::Status::Overweight, "overweight"},
-     {WeighingScaleHandler::Status::DummyValue, "error"},
-     {WeighingScaleHandler::Status::NotInitialized, "not initialized"}};
-
 uint qHash(WeighingScaleHandler::Unit value, uint seed)
 {
     return qHash(static_cast<int>(value), seed);
@@ -199,10 +179,28 @@ WeighingScaleHandler::Status WeighingScaleHandler::extractStateStatus(unsigned l
 
 QString WeighingScaleHandler::State::stringifiedStatus() const
 {
+    static const QHash<WeighingScaleHandler::Status, QString> STATUSES =
+        {{WeighingScaleHandler::Status::UnknownStatus, "error"},
+         {WeighingScaleHandler::Status::Fault, "error"},
+         {WeighingScaleHandler::Status::StableZero, "stable"},
+         {WeighingScaleHandler::Status::InMotion, "in motion"},
+         {WeighingScaleHandler::Status::Stable, "stable"},
+         {WeighingScaleHandler::Status::UnderZero, "under zero"},
+         {WeighingScaleHandler::Status::Overweight, "overweight"},
+         {WeighingScaleHandler::Status::DummyValue, "error"},
+         {WeighingScaleHandler::Status::NotInitialized, "not initialized"}};
     return STATUSES.value(status, "");
 }
 
 QString WeighingScaleHandler::State::stringifiedUnit() const
 {
+    static const QHash<WeighingScaleHandler::Unit, QString> UNITS =
+        {{WeighingScaleHandler::Unit::UnknownUnit, ""},   {WeighingScaleHandler::Unit::Milligram, "mg"},
+         {WeighingScaleHandler::Unit::Gram, "g"},         {WeighingScaleHandler::Unit::Kilogram, "kg"},
+         {WeighingScaleHandler::Unit::Carat, "ct"},       {WeighingScaleHandler::Unit::Tael, "tael"},
+         {WeighingScaleHandler::Unit::Grain, "gr"},       {WeighingScaleHandler::Unit::Pennyweight, "dwt"},
+         {WeighingScaleHandler::Unit::MetricTon, "ton"},  {WeighingScaleHandler::Unit::AvoirTon, "short ton"},
+         {WeighingScaleHandler::Unit::TroyOunce, "oz t"}, {WeighingScaleHandler::Unit::Ounce, "oz"},
+         {WeighingScaleHandler::Unit::Pound, "lb"}};
     return UNITS.value(unit, "");
 }
