@@ -99,9 +99,9 @@ protected:
     void run() override;
 
 private:
-    unsigned long long packState(Status status, Unit unit, short weight, char scaleFactor) const;
-    State extractState(unsigned long long state) const;
-    Status extractStateStatus(unsigned long long state) const;
+    uint64_t packState(Status status, Unit unit, short weight, char scaleFactor) const;
+    State extractState(uint64_t state) const;
+    Status extractStateStatus(uint64_t state) const;
 
     unsigned short m_vendorId = 0;
     unsigned short m_productId = 0;

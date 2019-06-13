@@ -9,15 +9,18 @@ proof_add_target_sources(proofservice-weighing-scale
     main.cpp
     weighingscalerestserver.cpp
     weighingscalehandler.cpp
-    3rdparty/hidapi/hid.c
 )
 
 proof_add_target_headers(proofservice-weighing-scale
     weighingscalerestserver.h
     weighingscalehandler.h
     proofservice-weighing-scale_global.h
-    3rdparty/hidapi/hidapi.h
 )
+
+if (NOT PROOF_CLANG_TIDY)
+    proof_add_target_sources(proofservice-weighing-scale 3rdparty/hidapi/hid.c)
+    proof_add_target_headers(proofservice-weighing-scale 3rdparty/hidapi/hidapi.h)
+endif()
 
 proof_add_service(proofservice-weighing-scale
     PROOF_LIBS Network

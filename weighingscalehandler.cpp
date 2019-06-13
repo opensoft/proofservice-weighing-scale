@@ -30,7 +30,7 @@
 
 #include "proofcore/proofobject.h"
 
-#include <math.h>
+#include <cmath>
 
 constexpr int READ_TIMEOUT = 500;
 constexpr int READ_ERROR_TIMEOUT = 5000;
@@ -100,18 +100,18 @@ void WeighingScaleHandler::run()
         return;
     }
 
-    m_hidHandle = hid_open(m_vendorId, m_productId, NULL);
+    m_hidHandle = hid_open(m_vendorId, m_productId, nullptr);
     if (!m_hidHandle) {
         qCCritical(proofServiceWeighingScaleLog) << "HID device can't be opened, going down";
         return;
     }
 
-    auto stateUpdater = [this](unsigned long long packedState) {
+    auto stateUpdater = [this](uint64_t packedState) {
         m_instantState = packedState;
         if (extractStateStatus(packedState) != Status::InMotion) {
             m_lastStableState = packedState;
             m_stableWaitersLock.lockForRead();
-            bool waitersExist = m_stableWaiters.size();
+            bool waitersExist = !m_stableWaiters.empty();
             m_stableWaitersLock.unlock();
             if (waitersExist) {
                 auto state = extractState(packedState);
@@ -138,43 +138,43 @@ void WeighingScaleHandler::run()
                 stateUpdater(packState(Status::Fault, Unit::Tael, 0, 0));
                 hid_close(m_hidHandle);
                 QThread::msleep(ERROR_COOLDOWN_TIMEOUT);
-                m_hidHandle = hid_open(m_vendorId, m_productId, NULL);
+                m_hidHandle = hid_open(m_vendorId, m_productId, nullptr);
             }
             continue;
-        } else if (warningShown) {
+        }
+        if (warningShown) {
             warningShown = false;
             qCDebug(proofServiceWeighingScaleLog) << "Device connection is live again";
         }
         m_lastSuccessfulRead.restart();
         stateUpdater(packState(static_cast<Status>(qMin(data[1], static_cast<unsigned char>(Status::NotInitialized))),
                                static_cast<Unit>(qMin(data[2], static_cast<unsigned char>(Unit::Pound))),
-                               static_cast<short>((static_cast<unsigned short>(data[5]) << 8)
-                                                  | static_cast<unsigned short>(data[4])),
+                               static_cast<short>((static_cast<uint32_t>(data[5]) << 8u) | static_cast<uint32_t>(data[4])),
                                static_cast<char>(data[3])));
     }
     hid_close(m_hidHandle);
     hid_exit();
 }
 
-unsigned long long WeighingScaleHandler::packState(Status status, Unit unit, short weight, char scaleFactor) const
+uint64_t WeighingScaleHandler::packState(Status status, Unit unit, short weight, char scaleFactor) const
 {
-    unsigned long long result = static_cast<unsigned short>(weight);
-    result |= static_cast<unsigned char>(scaleFactor) << 16;
-    result |= static_cast<long long>(unit) << 24;
-    result |= static_cast<long long>(status) << 32;
+    uint64_t result = static_cast<unsigned short>(weight);
+    result |= static_cast<uint64_t>(scaleFactor) << 16u;
+    result |= static_cast<uint64_t>(unit) << 24u;
+    result |= static_cast<uint64_t>(status) << 32u;
     return result;
 }
 
-WeighingScaleHandler::State WeighingScaleHandler::extractState(unsigned long long state) const
+WeighingScaleHandler::State WeighingScaleHandler::extractState(uint64_t state) const
 {
-    double value = static_cast<double>(static_cast<short>(state & 0xFFFF))
-                   * pow(10, static_cast<char>((state >> 16) & 0xFF));
-    return State{static_cast<Status>((state >> 32) & 0xFF), static_cast<Unit>((state >> 24) & 0xFF), value};
+    double value = static_cast<double>(static_cast<short>(state & 0xFFFFu))
+                   * pow(10, static_cast<char>((state >> 16u) & 0xFFu));
+    return State{static_cast<Status>((state >> 32u) & 0xFFu), static_cast<Unit>((state >> 24u) & 0xFFu), value};
 }
 
-WeighingScaleHandler::Status WeighingScaleHandler::extractStateStatus(unsigned long long state) const
+WeighingScaleHandler::Status WeighingScaleHandler::extractStateStatus(uint64_t state) const
 {
-    return static_cast<Status>((state >> 32) & 0xFF);
+    return static_cast<Status>((state >> 32u) & 0xFFu);
 }
 
 QString WeighingScaleHandler::State::stringifiedStatus() const

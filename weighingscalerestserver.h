@@ -41,6 +41,10 @@ class WeighingScaleRestServer : public Proof::AbstractRestServer
     Q_OBJECT
 public:
     explicit WeighingScaleRestServer(quint16 port);
+    WeighingScaleRestServer(const WeighingScaleRestServer &) = delete;
+    WeighingScaleRestServer(WeighingScaleRestServer &&) = delete;
+    WeighingScaleRestServer &operator=(const WeighingScaleRestServer &) = delete;
+    WeighingScaleRestServer &operator=(WeighingScaleRestServer &&) = delete;
     ~WeighingScaleRestServer();
 
 protected slots:
